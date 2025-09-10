@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
+// Configure API URL
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const WS_URL = API_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+// Set axios base URL for production
+if (process.env.REACT_APP_API_URL) {
+  axios.defaults.baseURL = API_URL;
+}
+
 function App() {
   const [username, setUsername] = useState('');
   const [isJoined, setIsJoined] = useState(false);
@@ -39,7 +48,8 @@ function App() {
   };
 
   const connectWebSocket = () => {
-    const ws = new WebSocket(`ws://localhost:8000/ws/${username}`);
+    const wsProtocol = API_URL.startsWith('https') ? 'wss' : 'ws';
+    const ws = new WebSocket(`${wsProtocol}://${WS_URL}/ws/${username}`);
     
     ws.onopen = () => {
       console.log('Connected to chat');
