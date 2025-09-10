@@ -97,22 +97,29 @@ function App() {
 
   if (!isJoined) {
     return (
-      <div className="frontpage-container">
-        <div className="join-title">Join Chat</div>
-        <input
-          type="text"
-          className="username-input"
-          value={username}
-          onChange={e => setUsername(e.target.value)}
-          placeholder="Enter your username"
-        />
-        <button
-          onClick={joinChat}
-          className="join-button"
-          disabled={!username}
+      <div className="center-container">
+        <h2>Enter your name</h2>
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            joinChat();
+          }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}
         >
-          Join Chat
-        </button>
+          <input
+            type="text"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            className="username-input"
+            placeholder="Your name"
+          />
+          <button
+            type="submit"
+            className="join-chat-btn"
+          >
+            Join Chat
+          </button>
+        </form>
       </div>
     );
   }
