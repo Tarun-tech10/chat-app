@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        #log { background: #f5f5f5; padding: 10px; height: 300px; overflow-y: auto; }
+        input, button { margin: 5px; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h2>WebSocket Connection Test</h2>
+    <div>
+        <input type="text" id="username" placeholder="Enter username" value="testuser">
+        <button onclick="testConnection()">Test WebSocket Connection</button>
+        <button onclick="testAPI()">Test API Endpoint</button>
+    </div>
+    <div id="log"></div>
+
+    <script>
+        const API_URL = 'https://chat-app-grol-git-main-tarun-tech10s-projects.vercel.app';
+        const logDiv = document.getElementById('log');
+
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function testAPI() {
+            log('Testing API endpoint...');
+            fetch(`${API_URL}/`)
+                .then(response => response.json())
+                .then(data => {
+                    log(`✅ API Response: ${JSON.stringify(data)}`);
+                })
+                .catch(error => {
+                    log(`❌ API Error: ${error.message}`);
+                });
+        }
+
+        function testConnection() {
+            const username = document.getElementById('username').value;
+            if (!username) {
+                log('❌ Please enter a username');
+                return;
+            }
+
+            log(`🔌 Attempting WebSocket connection for user: ${username}`);
+
+            const wsUrl = `wss://chat-app-grol-git-main-tarun-tech10s-projects.vercel.app/ws/${username}`;
+            log(`WebSocket URL: ${wsUrl}`);
+
+            const ws = new WebSocket(wsUrl);
+
+            ws.onopen = function(event) {
+                log('✅ WebSocket connection opened');
+            };
+
+            ws.onmessage = function(event) {
+                log(`📨 Received: ${event.data}`);
+            };
+
+            ws.onclose = function(event) {
+                log(`❌ WebSocket connection closed. Code: ${event.code}, Reason: ${event.reason}`);
+            };
+
+            ws.onerror = function(error) {
+                log(`🚨 WebSocket error: ${error}`);
+            };
+
+            // Close connection after 10 seconds for testing
+            setTimeout(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.close();
+                    log('🔌 Connection closed after 10 seconds');
+                }
+            }, 10000);
+        }
+
+        // Auto-test API on page load
+        window.onload = function() {
+            log('🚀 WebSocket Test Page Loaded');
+            log(`API URL: ${API_URL}`);
+            testAPI();
+        };
+    </script>
+</body>
+</html>
