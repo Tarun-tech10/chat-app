@@ -17,7 +17,10 @@ function App() {
   const [inputMessage, setInputMessage] = useState('');
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const messagesEndRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+  const heartbeatIntervalRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -26,6 +29,19 @@ function App() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      stopHeartbeat();
+      if (socket) {
+        socket.close();
+      }
+    };
+  }, [socket]);
 
   const joinChat = async () => {
     if (username.trim()) {
@@ -47,18 +63,40 @@ function App() {
     }
   };
 
+  const startHeartbeat = (ws) => {
+    heartbeatIntervalRef.current = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000); // Send ping every 30 seconds
+  };
+
+  const stopHeartbeat = () => {
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
+  };
+
   const connectWebSocket = () => {
+    if (reconnectAttempts >= 5) {
+      console.log('Max reconnection attempts reached');
+      return;
+    }
+
     const wsProtocol = API_URL.startsWith('https') ? 'wss' : 'ws';
     const ws = new WebSocket(`${wsProtocol}://${WS_URL}/ws/${username}`);
-    
+
     ws.onopen = () => {
       console.log('Connected to chat');
       setIsConnected(true);
+      setReconnectAttempts(0);
+      startHeartbeat(ws);
     };
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      
+
       switch (data.type) {
         case 'history':
           setMessages(data.messages);
@@ -72,6 +110,9 @@ function App() {
         case 'user_left':
           console.log(`${data.username} left the chat`);
           break;
+        case 'pong':
+          // Heartbeat response
+          break;
         default:
           break;
       }
@@ -80,10 +121,18 @@ function App() {
     ws.onclose = () => {
       console.log('Disconnected from chat');
       setIsConnected(false);
+      stopHeartbeat();
+
+      // Attempt to reconnect after 3 seconds
+      reconnectTimeoutRef.current = setTimeout(() => {
+        setReconnectAttempts(prev => prev + 1);
+        connectWebSocket();
+      }, 3000);
     };
 
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
+      stopHeartbeat();
     };
 
     setSocket(ws);

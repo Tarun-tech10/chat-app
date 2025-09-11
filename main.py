@@ -12,7 +12,12 @@ app = FastAPI()
 
 # Enable CORS for React frontend
 # Get allowed origins from environment variable, default to localhost for development
-allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+default_origins = "http://localhost:3000,http://127.0.0.1:3000,https://chat-app-grol-git-main-tarun-tech10s-projects.vercel.app"
+allowed_origins_env = os.getenv("ALLOWED_ORIGINS")
+if allowed_origins_env:
+    allowed_origins = allowed_origins_env.split(",")
+else:
+    allowed_origins = default_origins.split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -221,19 +226,22 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
         while True:
             data = await websocket.receive_text()
             message_data = json.loads(data)
-            
-            if message_data.get("type") == "message":
+
+            if message_data.get("type") == "ping":
+                # Respond to heartbeat ping
+                await websocket.send_text(json.dumps({"type": "pong"}))
+            elif message_data.get("type") == "message":
                 content = message_data.get("content", "")
                 if content.strip():
                     # Save message to database
                     message = save_message(user.id, username, content)
-                    
+
                     # Broadcast to all connected clients
                     await manager.broadcast(json.dumps({
                         "type": "new_message",
                         "message": message.dict()
                     }))
-    
+
     except WebSocketDisconnect:
         manager.disconnect(user.id)
         await manager.broadcast(json.dumps({
